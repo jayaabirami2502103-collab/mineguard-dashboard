@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MineGuard | Mine Tilt Monitoring</title>
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#101e30;--line:#24364d;--muted:#91a4bc;--text:#e8f0fb;--green:#34d399;--amber:#fbbf24;--red:#fb7185;--blue:#60a5fa}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#122641 0,#07111f 58%);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Arial;color:var(--text)}
+main{max-width:1100px;margin:auto;padding:24px}header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:24px}.logo{display:grid;place-items:center;width:52px;height:52px;border:1px solid #31516b;border-radius:15px;background:#142a40;font-size:26px}h1{font-size:27px;letter-spacing:-.6px;margin:0}header p{margin:3px 0 0;color:var(--muted);font-size:13px}.pill{margin-left:auto;border:1px solid #2a5c4e;color:var(--green);padding:7px 11px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:1px}
+.hero{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:25px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(120deg,#14283d,#0f1b2c);margin-bottom:16px}.eyebrow{font-size:11px;font-weight:800;letter-spacing:1.5px;color:var(--muted);margin:0 0 8px}.hero h2{margin:0;font-size:clamp(24px,4vw,34px)}.hero p:last-child{color:#b2c1d4;margin:8px 0 0}.state-icon{font-size:42px;color:var(--blue);width:64px;height:64px;display:grid;place-items:center;border-radius:18px;background:#1b3450}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.card,.panel{border:1px solid var(--line);border-radius:16px;background:rgba(16,30,48,.92)}.card{padding:19px;min-height:150px}.label{font-size:11px;letter-spacing:1.2px;color:var(--muted);font-weight:800}.value{font-size:34px;font-weight:750;letter-spacing:-1px;margin:15px 0 6px}.unit{font-size:17px;color:var(--muted);margin-left:4px}.hint{font-size:12px;color:var(--muted)}.value.small{font-size:19px;letter-spacing:0;overflow-wrap:anywhere}
+.lower{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;margin-top:14px}.panel{padding:20px}.panel h3{font-size:16px;margin:0 0 7px}.panel .desc{color:var(--muted);font-size:13px;margin:0 0 16px}
+button{border:0;border-radius:10px;background:var(--green);color:#06251b;font-weight:800;padding:12px 16px;cursor:pointer}button.secondary{background:#263950;color:var(--text);border:1px solid #3a5069}button:disabled{opacity:.45;cursor:not-allowed}.actions{display:flex;gap:10px;flex-wrap:wrap}#message{margin-top:14px;color:var(--muted);font-size:13px;overflow-wrap:anywhere}.status-row{display:flex;align-items:center;gap:9px;margin-top:16px;font-size:13px}.dot{width:9px;height:9px;background:#64748b;border-radius:50%}.dot.on{background:var(--green);box-shadow:0 0 12px #34d39988}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:12px}.metric{background:#0b1726;border:1px solid #1e3147;padding:14px;border-radius:12px}.metric span{display:block;color:var(--muted);font-size:12px}.metric strong{display:block;font-size:19px;margin-top:4px}.log{height:100px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#081321;border:1px solid #1d2d42;border-radius:10px;padding:12px;color:#b6c7da;font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}
+footer{text-align:center;color:#7488a2;font-size:11px;margin:22px 0 5px}.disclaimer{color:#71839a;font-size:11px;margin-top:12px}
+@media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.lower{grid-template-columns:1fr}}@media(max-width:450px){main{padding:14px}.grid{grid-template-columns:1fr 1fr}.card{padding:14px;min-height:130px}.value{font-size:27px}.hero{padding:18px}.pill{margin-left:0}}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div class="logo" aria-hidden="true">⛏</div>
+  <div><h1>MineGuard</h1><p>Mine subsidence &amp; ground-tilt monitoring · SIH26025</p></div>
+  <span class="pill">HARDWARE DASHBOARD</span>
+</header>
+
+<section class="hero">
+  <div><p class="eyebrow">GROUND STABILITY STATUS</p><h2 id="condition">Waiting for sensor</h2><p id="summary">Connect your Arduino to display real MPU6050 readings.</p></div>
+  <div class="state-icon" id="stateIcon" aria-hidden="true">⌁</div>
+</section>
+
+<section class="grid">
+  <article class="card"><div class="label">ROLL CHANGE</div><div class="value"><span id="roll">—</span><span class="unit">°</span></div><div class="hint">Relative to startup position</div></article>
+  <article class="card"><div class="label">PITCH CHANGE</div><div class="value"><span id="pitch">—</span><span class="unit">°</span></div><div class="hint">Relative to startup position</div></article>
+  <article class="card"><div class="label">USB SENSOR LINK</div><div class="value small" id="connection">Disconnected</div><div class="hint" id="linkHint">Waiting for permission</div></article>
+  <article class="card"><div class="label">ALERT LEVEL</div><div class="value small" id="alert">No data</div><div class="hint">Demo thresholds; not safety certified</div></article>
+</section>
+
+<section class="lower">
+  <article class="panel">
+    <h3>Hardware connection</h3><p class="desc">Connect Arduino UNO by USB. Close Arduino IDE Serial Monitor before connecting.</p>
+    <div class="actions"><button id="connect">Connect Arduino USB</button><button id="disconnect" class="secondary" disabled>Disconnect</button></div>
+    <div class="status-row"><span class="dot" id="dot"></span><span id="statusText">Not connected</span></div>
+    <div id="message">Supported desktop Chrome or Edge is required. Open this page over HTTPS, then select the Arduino COM port.</div>
+    <p class="disclaimer">Readings are for a student prototype. Do not use this dashboard as a certified mine-safety alarm.</p>
+  </article>
+  <article class="panel">
+    <h3>Latest sensor data</h3><p class="desc">The page expects lines like “Roll change: 0.0 deg | Pitch change: 0.0 deg”.</p>
+    <div class="metrics">
+      <div class="metric"><span>Last received</span><strong id="lastUpdate">—</strong></div>
+      <div class="metric"><span>Serial speed</span><strong>115200 baud</strong></div>
+    </div>
+    <h3 style="margin-top:18px">Serial log</h3><div class="log" id="log">No data received yet.</div>
+  </article>
+</section>
+<footer>MineGuard · Educational prototype · Live data appears only after USB connection</footer>
+</main>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let port = null, reader = null, keepReading = false, buffer = "";
+  const set = (id, value) => $(id).textContent = value;
+  const paint = (color) => { $("stateIcon").style.color = color; }
+  function status(connected, text) {
+    $("dot").classList.toggle("on", connected);
+    set("statusText", text);
+    set("connection", connected ? "Connected" : "Disconnected");
+    set("linkHint", connected ? "Serial link open" : "Waiting for permission");
+  }
+  function parseLine(line) {
+    // Accept the current working Arduino sketch's output.
+    const r = line.match(/Roll change:\s*(-?\d+(?:\.\d+)?)/i);
+    const p = line.match(/Pitch change:\s*(-?\d+(?:\.\d+)?)/i);
+    if (!r || !p) return;
+    const roll = Number(r[1]), pitch = Number(p[1]);
+    $("roll").textContent = roll.toFixed(1);
+    $("pitch").textContent = pitch.toFixed(1);
+    set("lastUpdate", new Date().toLocaleTimeString());
+    $("log").textContent = line + "\n" + $("log").textContent.split("\n").slice(0,5).join("\n");
+    const tilt = Math.max(Math.abs(roll), Math.abs(pitch));
+    if (tilt >= 15) {
+      set("condition","Critical"); set("alert","CRITICAL");
+      set("summary","Large tilt change detected. Check the sensor and test setup.");
+      paint("#fb7185");
+    } else if (tilt >= 5) {
+      set("condition","Warning"); set("alert","WARNING");
+      set("summary","Tilt change detected. Continue observing the readings.");
+      paint("#fbbf24");
+    } else {
+      set("condition","Normal"); set("alert","NORMAL");
+      set("summary","Tilt change is within this prototype's demo threshold.");
+      paint("#34d399");
+    }
+  }
+  $("connect").addEventListener("click", async () => {
+    if (!("serial" in navigator)) {
+      set("message","Web Serial is unavailable here. Use desktop Chrome/Edge and open the page via HTTPS.");
+      return;
+    }
+    try {
+      port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 115200 });
+      status(true,"USB connected; waiting for readings");
+      set("message","Connected. Tilt the MPU6050 to test live readings.");
+      $("connect").disabled = true; $("disconnect").disabled = false;
+      keepReading = true; buffer = "";
+      const decoder = new TextDecoderStream();
+      const closed = port.readable.pipeTo(decoder.writable).catch(() => {});
+      reader = decoder.readable.getReader();
+      while (keepReading) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += value;
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() || "";
+        for (const line of lines) parseLine(line.trim());
+      }
+      await closed;
+    } catch (err) {
+      set("message","Could not connect: " + err.message + ". Close Serial Monitor and try again.");
+    } finally {
+      status(false,"Not connected");
+      $("connect").disabled = false; $("disconnect").disabled = true;
+    }
+  });
+  $("disconnect").addEventListener("click", async () => {
+    keepReading = false;
+    try { if (reader) { await reader.cancel(); reader.releaseLock(); reader = null; } } catch (_) {}
+    try { if (port) { await port.close(); port = null; } } catch (_) {}
+    status(false,"Disconnected by user");
+    set("message","Disconnected. You can connect again when ready.");
+    $("connect").disabled = false; $("disconnect").disabled = true;
+  });
+})();
+</script>
+</body>
+</html>
